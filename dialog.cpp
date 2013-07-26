@@ -103,7 +103,10 @@ void Dialog::onSendButtonClicked()
             else
                 port->write(QByteArray(1, buf[i]));
         } */
-        portA->write(buf);
+        if (ui->cbHexA->checkState() == Qt::Checked)
+            portA->write(QByteArray::fromHex(buf));
+        else
+            portA->write(buf);
     }
 }
 
@@ -140,7 +143,7 @@ void Dialog::onReadyReadA()
         QByteArray ba = portA->readAll();
         if ((mode == 2) && (portB->isOpen())) portB->write(ba);
         if (ui->cbHexA->checkState() == Qt::Checked)
-            LogMsg(ba.toHex(), 0);
+            LogMsg(ba.toHex().toUpper(), 0);
         else
             LogMsg(ba, 0);
     }
@@ -152,7 +155,7 @@ void Dialog::onReadyReadB()
         QByteArray ba = portB->readAll();
         if ((mode == 2) && (portA->isOpen())) portA->write(ba);
         if (ui->cbHexB->checkState() == Qt::Checked)
-            LogMsg(ba.toHex(), 1);
+            LogMsg(ba.toHex().toUpper(), 1);
         else
             LogMsg(ba, 1);
     }
