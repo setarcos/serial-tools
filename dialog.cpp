@@ -31,6 +31,7 @@ Dialog::Dialog(QWidget *parent) :
     connect(ui->openCloseA, SIGNAL(clicked()), SLOT(onOpenCloseAClicked()));
     connect(ui->openCloseB, SIGNAL(clicked()), SLOT(onOpenCloseBClicked()));
     connect(ui->sendButton, SIGNAL(clicked()), SLOT(onSendButtonClicked()));
+    connect(ui->pbClear, SIGNAL(clicked()), SLOT(onClearClicked()));
     connect(portA, SIGNAL(readyRead()), SLOT(onReadyReadA()));
     connect(portB, SIGNAL(readyRead()), SLOT(onReadyReadB()));
     connect(ui->cbMode, SIGNAL(currentIndexChanged(int)), SLOT(onModeChange(int)));
@@ -124,6 +125,11 @@ void Dialog::onModeChange(int m)
     }
 }
 
+void Dialog::onClearClicked()
+{
+    ui->recvEdit->clear();
+}
+
 void Dialog::closeEvent(QCloseEvent *event)
 {
     QSettings set("Pluto", "comloger");
@@ -169,7 +175,7 @@ void Dialog::LogMsg(const QByteArray& s, int ch)
     else
         prefix = "";
     ui->recvEdit->moveCursor(QTextCursor::End);
-    ui->recvEdit->insertPlainText(QString::fromLatin1(prefix + s));
+    ui->recvEdit->insertPlainText(QString::fromLatin1(prefix + s + "\n"));
     QTime now(QTime::currentTime());
     QFile f("com.log");
     f.open(QIODevice::Append | QIODevice::Text);

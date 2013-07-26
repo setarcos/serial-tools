@@ -24,6 +24,7 @@ protected:
 private Q_SLOTS:
     void onOpenCloseAClicked();
     void onOpenCloseBClicked();
+    void onClearClicked();
     void onSendButtonClicked();
     void onReadyReadA();
     void onReadyReadB();

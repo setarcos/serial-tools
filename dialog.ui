@@ -18,6 +18,9 @@
     <layout class="QVBoxLayout" name="verticalLayout" stretch="3,1">
      <item>
       <widget class="QPlainTextEdit" name="recvEdit">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
        <property name="maximumBlockCount">
         <number>800</number>
        </property>
@@ -228,6 +231,13 @@
         </widget>
        </item>
       </layout>
+     </item>
+     <item>
+      <widget class="QPushButton" name="pbClear">
+       <property name="text">
+        <string>Clear Buf</string>
+       </property>
+      </widget>
      </item>
      <item>
       <widget class="QCheckBox" name="cbAuto">
