@@ -108,6 +108,7 @@ void Dialog::onSendButtonClicked()
             portA->write(QByteArray::fromHex(buf));
         else
             portA->write(buf);
+        LogMsg(buf, 1);
     }
 }
 
@@ -172,8 +173,10 @@ void Dialog::LogMsg(const QByteArray& s, int ch)
     QByteArray prefix;
     if (mode > 0)
         prefix = (ch == 0 ? "A: " : "B: ");
-    else
-        prefix = "";
+    else {
+        if (ch) prefix = "=>";
+        else prefix = "<=";
+    }
     ui->recvEdit->moveCursor(QTextCursor::End);
     ui->recvEdit->insertPlainText(QString::fromLatin1(prefix + s + "\n"));
     QTime now(QTime::currentTime());
