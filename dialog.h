@@ -30,6 +30,7 @@ private Q_SLOTS:
     void onReadyReadB();
     void onModeChange(int m);
     void LogMsg(const QByteArray& s, int ch);
+    void LogBin(const QByteArray& s, const QString &fname);
 private:
     void OpenCloseCom(QSerialPort *port, QComboBox *com, QComboBox *baud, HLed *led);
     int mode;

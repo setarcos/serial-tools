@@ -133,6 +133,7 @@ void Dialog::onClearClicked()
 
 void Dialog::closeEvent(QCloseEvent *event)
 {
+    Q_UNUSED(event);
     QSettings set("Pluto", "comloger");
     set.setValue("mode", ui->cbMode->currentIndex());
     set.setValue("portAname", ui->cbPortA->currentText());
@@ -148,6 +149,7 @@ void Dialog::onReadyReadA()
 {
     if (portA->bytesAvailable()) {
         QByteArray ba = portA->readAll();
+        LogBin(ba, "comA.bin");
         if ((mode == 2) && (portB->isOpen())) portB->write(ba);
         if (ui->cbHexA->checkState() == Qt::Checked)
             LogMsg(ba.toHex().toUpper(), 0);
@@ -160,6 +162,7 @@ void Dialog::onReadyReadB()
 {
     if (portB->bytesAvailable()) {
         QByteArray ba = portB->readAll();
+        LogBin(ba, "comB.bin");
         if ((mode == 2) && (portA->isOpen())) portA->write(ba);
         if (ui->cbHexB->checkState() == Qt::Checked)
             LogMsg(ba.toHex().toUpper(), 1);
@@ -183,5 +186,13 @@ void Dialog::LogMsg(const QByteArray& s, int ch)
     QFile f("com.log");
     f.open(QIODevice::Append | QIODevice::Text);
     f.write(now.toString("hh:mm:ss.zzz").toLatin1() + " " + prefix + s + "\n");
+    f.close();
+}
+
+void Dialog::LogBin(const QByteArray& s, const QString &fname)
+{
+    QFile f(fname);
+    f.open(QIODevice::Append);
+    f.write(s);
     f.close();
 }
