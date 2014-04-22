@@ -16,7 +16,7 @@ Dialog::Dialog(QWidget *parent) :
     QStringList comname;
     QList<QSerialPortInfo> serialPortInfoList = QSerialPortInfo::availablePorts();
     foreach (const QSerialPortInfo &serialPortInfo, serialPortInfoList)
-        comname << serialPortInfo.systemLocation();
+        comname << serialPortInfo.portName();
     ui->cbPortA->addItems(comname);
     ui->cbPortB->addItems(comname);
 
