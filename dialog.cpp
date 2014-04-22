@@ -6,6 +6,7 @@
 #include <QTime>
 #include <QSettings>
 #include <QSerialPort>
+#include <QtSerialPort/QSerialPortInfo>
 
 Dialog::Dialog(QWidget *parent) :
     QDialog(parent),
@@ -13,12 +14,9 @@ Dialog::Dialog(QWidget *parent) :
 {
     ui->setupUi(this);
     QStringList comname;
-
-#ifdef Q_OS_WIN
-    comname<<QLatin1String("COM1")<<QLatin1String("COM2")<<QLatin1String("COM3")<<QLatin1String("COM4");
-#else
-    comname<<QLatin1String("/dev/ttyS0")<<QLatin1String("/dev/ttyS1")<<QLatin1String("/dev/ttyUSB0")<<QLatin1String("/dev/ttyUSB1");
-#endif
+    QList<QSerialPortInfo> serialPortInfoList = QSerialPortInfo::availablePorts();
+    foreach (const QSerialPortInfo &serialPortInfo, serialPortInfoList)
+        comname << serialPortInfo.systemLocation();
     ui->cbPortA->addItems(comname);
     ui->cbPortB->addItems(comname);
 
