@@ -65,8 +65,8 @@ void Dialog::OpenCloseCom(QSerialPort *port, QComboBox *com, QComboBox *baud, HL
         port->close();
     } else {
         port->setPortName(com->currentText());
-        port->setBaudRate((QSerialPort::BaudRate)baud->currentText().toInt());
         port->open(QIODevice::ReadWrite);
+        port->setBaudRate((QSerialPort::BaudRate)baud->currentText().toInt());
     }
     if (port->isOpen())
         led->turnOn();
