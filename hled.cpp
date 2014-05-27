@@ -32,6 +32,7 @@ void HLed::setColor(const QColor &color)
 {
     if (m_d->color == color)
         return;
+    m_d->color = color;
     update();
 }
 
