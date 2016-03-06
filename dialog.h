@@ -10,6 +10,7 @@ namespace Ui {
 class QSerialPort;
 class QComboBox;
 class HLed;
+class QTimer;
 
 class Dialog : public QDialog
 {
@@ -29,6 +30,7 @@ private Q_SLOTS:
     void onReadyReadA();
     void onReadyReadB();
     void onModeChange(int m);
+    void onContinuous(int s);
     void LogMsg(const QByteArray& s, int ch);
     void LogBin(const QByteArray& s, const QString &fname);
 private:
@@ -37,6 +39,7 @@ private:
     Ui::Dialog *ui;
     QSerialPort *portA;
     QSerialPort *portB;
+    QTimer *timer;
 };
 
 #endif // DIALOG_H

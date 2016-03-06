@@ -10,7 +10,10 @@
 
 Dialog::Dialog(QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::Dialog)
+    ui(new Ui::Dialog),
+    portA(new QSerialPort()),
+    portB(new QSerialPort()),
+    timer(new QTimer())
 {
     ui->setupUi(this);
     QStringList comname;
@@ -23,9 +26,6 @@ Dialog::Dialog(QWidget *parent) :
     ui->ledA->turnOff();
     ui->ledB->turnOff();
 
-    portA = new QSerialPort();
-    portB = new QSerialPort();
-
     connect(ui->openCloseA, SIGNAL(clicked()), SLOT(onOpenCloseAClicked()));
     connect(ui->openCloseB, SIGNAL(clicked()), SLOT(onOpenCloseBClicked()));
     connect(ui->sendButton, SIGNAL(clicked()), SLOT(onSendButtonClicked()));
@@ -33,6 +33,8 @@ Dialog::Dialog(QWidget *parent) :
     connect(portA, SIGNAL(readyRead()), SLOT(onReadyReadA()));
     connect(portB, SIGNAL(readyRead()), SLOT(onReadyReadB()));
     connect(ui->cbMode, SIGNAL(currentIndexChanged(int)), SLOT(onModeChange(int)));
+    connect(ui->cbCont, SIGNAL(stateChanged(int)), SLOT(onContinuous(int)));
+    connect(timer, SIGNAL(timeout()), SLOT(onSendButtonClicked()));
 
     setWindowTitle(QLatin1String("Serial Port Utility"));
     QSettings set("Pluto", "comloger");
@@ -57,6 +59,7 @@ Dialog::~Dialog()
     delete ui;
     delete portA;
     delete portB;
+    delete timer;
 }
 
 void Dialog::OpenCloseCom(QSerialPort *port, QComboBox *com, QComboBox *baud, HLed *led)
@@ -193,4 +196,10 @@ void Dialog::LogBin(const QByteArray& s, const QString &fname)
     f.open(QIODevice::Append);
     f.write(s);
     f.close();
+}
+
+void Dialog::onContinuous(int s)
+{
+    if (s) timer->start(200);
+    else timer->stop();
 }

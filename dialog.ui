@@ -260,6 +260,13 @@
       </spacer>
      </item>
      <item>
+      <widget class="QCheckBox" name="cbCont">
+       <property name="text">
+        <string>Continuous</string>
+       </property>
+      </widget>
+     </item>
+     <item>
       <widget class="QPushButton" name="sendButton">
        <property name="text">
         <string>Send</string>
