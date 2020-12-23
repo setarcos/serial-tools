@@ -109,7 +109,7 @@ void Dialog::onSendButtonClicked()
             portA->write(QByteArray::fromHex(buf));
         else
             portA->write(buf);
-        LogMsg(buf, 1);
+        LogMsg(buf, CH_A);
     }
 }
 
@@ -153,9 +153,9 @@ void Dialog::onReadyReadA()
         LogBin(ba, "comA.bin");
         if ((mode == 2) && (portB->isOpen())) portB->write(ba);
         if (ui->cbHexA->checkState() == Qt::Checked)
-            LogMsg(ba.toHex().toUpper(), 0);
+            LogMsg(ba.toHex().toUpper(), CH_A | CH_IN);
         else
-            LogMsg(ba, 0);
+            LogMsg(ba, CH_A | CH_IN);
     }
 }
 
@@ -166,21 +166,24 @@ void Dialog::onReadyReadB()
         LogBin(ba, "comB.bin");
         if ((mode == 2) && (portA->isOpen())) portA->write(ba);
         if (ui->cbHexB->checkState() == Qt::Checked)
-            LogMsg(ba.toHex().toUpper(), 1);
+            LogMsg(ba.toHex().toUpper(), CH_IN);
         else
-            LogMsg(ba, 1);
+            LogMsg(ba, CH_IN);
     }
 }
 
 void Dialog::LogMsg(const QByteArray& s, int ch)
 {
     QByteArray prefix;
-    if (mode > 0)
-        prefix = (ch == 0 ? "A: " : "B: ");
-    else {
-        if (ch) prefix = "=>";
-        else prefix = "<=";
+    if (mode == 1) {
+        prefix = (ch & CH_A ? "A" : "B");
+        if (ch & CH_IN) prefix += "<=:";
+        else prefix += "=>:";
     }
+    else if (mode == 2)
+        prefix = (ch & CH_A ? "A=>B:" : "B=>A:");
+    else
+        prefix = (ch & CH_IN ? "<=:" : "=>:");
     ui->recvEdit->moveCursor(QTextCursor::End);
     ui->recvEdit->insertPlainText(QString::fromLatin1(prefix + s + "\n"));
     QTime now(QTime::currentTime());

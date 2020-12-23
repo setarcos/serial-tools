@@ -12,6 +12,9 @@ class QComboBox;
 class HLed;
 class QTimer;
 
+const int CH_A = 0x10;
+const int CH_IN = 0x01;
+
 class Dialog : public QDialog
 {
     Q_OBJECT
