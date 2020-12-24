@@ -5,15 +5,17 @@
 #include <QtCore/QVariant>
 #include <QTime>
 #include <QSettings>
+#include <QMessageBox>
 #include <QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
 
 Dialog::Dialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::Dialog),
-    portA(new QSerialPort()),
-    portB(new QSerialPort()),
-    timer(new QTimer())
+    portA(new QSerialPort()), portB(new QSerialPort()),
+    timer(new QTimer()),
+    bufA(new QByteArray()), bufB(new QByteArray()), masterAddr(new QByteArray()),
+    state(0)
 {
     ui->setupUi(this);
     QStringList comname;
@@ -34,7 +36,7 @@ Dialog::Dialog(QWidget *parent) :
     connect(portB, SIGNAL(readyRead()), SLOT(onReadyReadB()));
     connect(ui->cbMode, SIGNAL(currentIndexChanged(int)), SLOT(onModeChange(int)));
     connect(ui->cbCont, SIGNAL(stateChanged(int)), SLOT(onContinuous(int)));
-    connect(timer, SIGNAL(timeout()), SLOT(onSendButtonClicked()));
+    connect(timer, SIGNAL(timeout()), SLOT(onTimerTimeout()));
 
     setWindowTitle(QLatin1String("Serial Port Utility"));
     QSettings set("Pluto", "comloger");
@@ -48,6 +50,7 @@ Dialog::Dialog(QWidget *parent) :
     ui->cbAuto->setCheckState((Qt::CheckState)set.value("auto", 0).toInt());
     ui->cbHexA->setCheckState((Qt::CheckState)set.value("HexA", 0).toInt());
     ui->cbHexB->setCheckState((Qt::CheckState)set.value("HexB", 0).toInt());
+    *masterAddr = set.value("masterAddr", "").toByteArray();
     if (ui->cbAuto->checkState() == Qt::Checked) {
         if (mode != 0) onOpenCloseBClicked();
         onOpenCloseAClicked();
@@ -59,6 +62,9 @@ Dialog::~Dialog()
     delete ui;
     delete portA;
     delete portB;
+    delete bufA;
+    delete bufB;
+    delete masterAddr;
     delete timer;
 }
 
@@ -80,37 +86,62 @@ void Dialog::OpenCloseCom(QSerialPort *port, QComboBox *com, QComboBox *baud, HL
 void Dialog::onOpenCloseAClicked()
 {
     OpenCloseCom(portA, ui->cbPortA, ui->cbBaudA, ui->ledA);
+    // Master
+    if (portA->isOpen()) {
+        state = OPEN_MASTER;
+        portAWrite("AT\r\n"); // Test for conf mode
+        timer->start(200);
+    }
+}
+
+void Dialog::portAWrite(const QByteArray &buf)
+{
+    portA->write(buf);
+    LogMsg(buf, CH_A);
+}
+
+void Dialog::portBWrite(const QByteArray &buf)
+{
+    portB->write(buf);
+    LogMsg(buf, 0);
 }
 
 void Dialog::onOpenCloseBClicked()
 {
     OpenCloseCom(portB, ui->cbPortB, ui->cbBaudB, ui->ledB);
+    // Slave
+    if (portB->isOpen()) {
+        state = OPEN_SLAVE;
+        portBWrite("AT\r\n"); // Test for conf mode
+        timer->start(400);
+    }
 }
 
 void Dialog::onSendButtonClicked()
 {
     if (portA->isOpen() && !ui->sendEdit->toPlainText().isEmpty()) {
         QByteArray buf = ui->sendEdit->toPlainText().toLatin1();
-   /*     for (int i = 0; i < buf.size(); ++i) {
-            if (buf[i] == '$')
-                port->write(QByteArray(1, '\001'));
-            else if (buf[i] == '[')
-                port->write(QByteArray(1, '\002')); // STX
-            else if (buf[i] == ']')
-                port->write(QByteArray(1, '\003')); // ETX
-            else if (buf[i] == '}')
-                port->write(QByteArray(1, 0x17)); // ETB
-            else if (buf[i] == '^')
-                port->write(QByteArray(1, 0x1B)); // ESC
-            else
-                port->write(QByteArray(1, buf[i]));
-        } */
         if (ui->cbHexA->checkState() == Qt::Checked)
             portA->write(QByteArray::fromHex(buf));
         else
             portA->write(buf);
         LogMsg(buf, CH_A);
     }
+}
+
+void Dialog::onTimerTimeout(void)
+{
+    timer->stop();
+    if (state == OPEN_MASTER) {
+        state = BT_IDLE;  // It's OK, just not in conf mode.
+        return;
+    }
+    if (state == BT_TEST) {
+        portBWrite("BT TEST\r\n");
+        return;
+    }
+    QMessageBox::warning(this, "Info", "Something wrong, timeout");
+    state = 0;
 }
 
 void Dialog::onModeChange(int m)
@@ -144,6 +175,79 @@ void Dialog::closeEvent(QCloseEvent *event)
     set.setValue("auto", ui->cbAuto->checkState());
     set.setValue("HexA", ui->cbHexA->checkState());
     set.setValue("HexB", ui->cbHexB->checkState());
+    set.setValue("masterAddr", QString::fromLatin1(*masterAddr));
+}
+
+void Dialog::processA()
+{
+    *bufA = bufA->trimmed();
+    if (state == ADDR_MASTER) {
+        if (bufA->indexOf("ADDR") >= 0) *masterAddr = bufA->mid(6);
+    }
+    if (state == BT_TEST) {
+        if (bufA->indexOf("BT TEST") == 0) {
+            QMessageBox::information(this, "OK", "This one is OK");
+            timer->stop();
+            state = BT_IDLE;
+        }
+    }
+    if (bufA->indexOf("OK") == 0) {
+        switch (state) {
+            case OPEN_MASTER:
+                timer->stop();
+                state = ADDR_MASTER;
+                portAWrite("AT+ADDR?\r\n");
+                break;
+            case ADDR_MASTER:
+                state = BAUD_MASTER;
+                portAWrite("AT+UART=38400,0,0\r\n");
+                break;
+            case BAUD_MASTER:
+                state = ROLE_MASTER;
+                portAWrite("AT+ROLE=1\r\n");
+                break;
+            case ROLE_MASTER:
+                state = PSWD_MASTER;
+                portAWrite("AT+PSWD=1234\r\n");
+                break;
+            case PSWD_MASTER:
+                state = BT_IDLE;
+                portAWrite("AT+RESET\r\n");
+                break;
+        }
+    }
+    bufA->clear();
+}
+
+void Dialog::processB()
+{
+    *bufB = bufB->trimmed();
+    if (bufB->indexOf("OK") == 0) {
+        switch (state) {
+            case OPEN_SLAVE:
+                state = BAUD_SLAVE;
+                portBWrite("AT+UART=38400,0,0\r\n");
+                break;
+            case BAUD_SLAVE:
+                state = ROLE_SLAVE;
+                portBWrite("AT+ROLE=0\r\n");
+                break;
+            case ROLE_SLAVE:
+                state = BIND_SLAVE;
+                portBWrite("AT+BIND=" + masterAddr->replace(':', ',') + "\r\n");
+                break;
+            case BIND_SLAVE:
+                state = PSWD_SLAVE;
+                portBWrite("AT+PSWD=1234\r\n");
+                break;
+            case PSWD_SLAVE:
+                state = BT_TEST;
+                portBWrite("AT+RESET\r\n");
+                timer->start(2000);
+                break;
+        }
+    }
+    bufB->clear();
 }
 
 void Dialog::onReadyReadA()
@@ -151,6 +255,8 @@ void Dialog::onReadyReadA()
     if (portA->bytesAvailable()) {
         QByteArray ba = portA->readAll();
         LogBin(ba, "comA.bin");
+        bufA->append(ba);
+        if (bufA->indexOf('\r') > 0) processA();
         if ((mode == 2) && (portB->isOpen())) portB->write(ba);
         if (ui->cbHexA->checkState() == Qt::Checked)
             LogMsg(ba.toHex().toUpper(), CH_A | CH_IN);
@@ -164,6 +270,8 @@ void Dialog::onReadyReadB()
     if (portB->bytesAvailable()) {
         QByteArray ba = portB->readAll();
         LogBin(ba, "comB.bin");
+        bufB->append(ba);
+        if (bufB->indexOf('\r') > 0) processB();
         if ((mode == 2) && (portA->isOpen())) portA->write(ba);
         if (ui->cbHexB->checkState() == Qt::Checked)
             LogMsg(ba.toHex().toUpper(), CH_IN);
@@ -174,6 +282,8 @@ void Dialog::onReadyReadB()
 
 void Dialog::LogMsg(const QByteArray& s, int ch)
 {
+//    static int last_a_line, last_b_line;
+//    static QTime last_a_time, last_b_time;
     QByteArray prefix;
     if (mode == 1) {
         prefix = (ch & CH_A ? "A" : "B");
