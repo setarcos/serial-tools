@@ -225,6 +225,7 @@ void Dialog::processB()
     if (bufB->indexOf("OK") == 0) {
         switch (state) {
             case OPEN_SLAVE:
+                timer->stop();
                 state = BAUD_SLAVE;
                 portBWrite("AT+UART=38400,0,0\r\n");
                 break;
