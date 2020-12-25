@@ -7,6 +7,7 @@
 #include <QSettings>
 #include <QMessageBox>
 #include <QSerialPort>
+#include <QDebug>
 #include <QtSerialPort/QSerialPortInfo>
 
 Dialog::Dialog(QWidget *parent) :
@@ -283,9 +284,10 @@ void Dialog::onReadyReadB()
 
 void Dialog::LogMsg(const QByteArray& s, int ch)
 {
-//    static int last_a_line, last_b_line;
-//    static QTime last_a_time, last_b_time;
+    static int last_apos, last_bpos;
+    static QTime last_atime(QTime(0,0,0)), last_btime(QTime(0,0,0));
     QByteArray prefix;
+    QTime now = QTime::currentTime();
     if (mode == 1) {
         prefix = (ch & CH_A ? "A" : "B");
         if (ch & CH_IN) prefix += "<=:";
@@ -295,9 +297,27 @@ void Dialog::LogMsg(const QByteArray& s, int ch)
         prefix = (ch & CH_A ? "A=>B:" : "B=>A:");
     else
         prefix = (ch & CH_IN ? "<=:" : "=>:");
-    ui->recvEdit->moveCursor(QTextCursor::End);
-    ui->recvEdit->insertPlainText(QString::fromLatin1(prefix + s + "\n"));
-    QTime now(QTime::currentTime());
+    QTextCursor cursor = ui->recvEdit->textCursor();
+    if (!(ch & CH_IN) || ((ch & CH_A) && (last_atime.msecsTo(now) > 2)) ||
+           ((!(ch & CH_A)) && (last_btime.msecsTo(now) > 2))) {
+        ui->recvEdit->moveCursor(QTextCursor::End);
+        if (ui->recvEdit->toPlainText().length() > 0)
+            ui->recvEdit->insertPlainText("\n");
+        ui->recvEdit->insertPlainText(QString::fromLatin1(prefix));
+    } else {
+        cursor.setPosition((ch & CH_A) ? last_apos : last_bpos);
+        ui->recvEdit->setTextCursor(cursor);
+    }
+    ui->recvEdit->insertPlainText(QString::fromLatin1(s));
+    if (ch & CH_IN) {
+        if (ch & CH_A) {
+            last_apos = ui->recvEdit->textCursor().position();
+            last_atime = now;
+        } else {
+            last_bpos = ui->recvEdit->textCursor().position();
+            last_btime = now;
+        }
+    }
     QFile f("com.log");
     f.open(QIODevice::Append | QIODevice::Text);
     f.write(now.toString("hh:mm:ss.zzz").toLatin1() + " " + prefix + s + "\n");
