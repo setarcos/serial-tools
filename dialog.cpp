@@ -125,7 +125,7 @@ void Dialog::onSendButtonClicked()
         if (ui->cbHexA->checkState() == Qt::Checked)
             portA->write(QByteArray::fromHex(buf));
         else
-            portA->write(buf);
+            portA->write(buf + "\r\n");
         LogMsg(buf, CH_A);
     }
 }
@@ -192,7 +192,7 @@ void Dialog::processA()
             state = BT_IDLE;
         }
     }
-    if (bufA->indexOf("OK") == 0) {
+    if (bufA->indexOf("OK") >= 0) {
         switch (state) {
             case OPEN_MASTER:
                 timer->stop();
@@ -223,7 +223,7 @@ void Dialog::processA()
 void Dialog::processB()
 {
     *bufB = bufB->trimmed();
-    if (bufB->indexOf("OK") == 0) {
+    if (bufB->indexOf("OK") >= 0) {
         switch (state) {
             case OPEN_SLAVE:
                 timer->stop();
@@ -298,8 +298,8 @@ void Dialog::LogMsg(const QByteArray& s, int ch)
     else
         prefix = (ch & CH_IN ? "<=:" : "=>:");
     QTextCursor cursor = ui->recvEdit->textCursor();
-    if (!(ch & CH_IN) || ((ch & CH_A) && (last_atime.msecsTo(now) > 2)) ||
-           ((!(ch & CH_A)) && (last_btime.msecsTo(now) > 2))) {
+    if (!(ch & CH_IN) || ((ch & CH_A) && (last_atime.msecsTo(now) > 30)) ||
+           ((!(ch & CH_A)) && (last_btime.msecsTo(now) > 30))) {
         ui->recvEdit->moveCursor(QTextCursor::End);
         if (ui->recvEdit->toPlainText().length() > 0)
             ui->recvEdit->insertPlainText("\n");
